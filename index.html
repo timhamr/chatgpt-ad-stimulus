@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#ffffff">
+<title>ChatGPT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 28px;
+    color: #0d0d0d;
+    background: #fff;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  svg { display: block; flex: none; }
+
+  .app { display: flex; flex-direction: column; height: 100%; }
+
+  /* Kopfzeile (dekorativ) */
+  .topbar {
+    flex: none; height: 52px; padding: 0 12px 0 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .model {
+    display: flex; align-items: center; gap: 4px; padding: 6px 10px;
+    font-size: 18px; line-height: 28px; color: #5d5d5d;
+  }
+  .model svg { width: 16px; height: 16px; margin-top: 2px; }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  .share {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px;
+    border: 1px solid #e3e3e3; border-radius: 999px;
+    font-size: 14px; font-weight: 500; line-height: 20px;
+  }
+  .share svg { width: 16px; height: 16px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: #2f6fe4; }
+
+  /* Chatverlauf */
+  .scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .thread { width: 100%; max-width: 808px; margin: 0 auto; padding: 16px 24px 40px; }
+
+  .turn-user { display: flex; justify-content: flex-end; margin-top: 32px; }
+  .turn-user:first-child { margin-top: 8px; }
+  .bubble {
+    max-width: 70%; padding: 10px 20px; border-radius: 22px; background: #eaf0fa;
+    white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;
+  }
+  .turn-bot { margin-top: 24px; }
+
+  .md p, .md ul { margin: 0 0 16px; }
+  .md ul { padding-left: 26px; }
+  .md li { margin: 6px 0; padding-left: 6px; }
+  .md > :last-child { margin-bottom: 0; }
+  .md strong { font-weight: 600; }
+  .tok { animation: tok-in 220ms ease-out both; }
+
+  .thinking { height: 28px; display: flex; align-items: center; }
+  .thinking-dot { width: 13px; height: 13px; border-radius: 50%; background: #0d0d0d; animation: breathe 1.2s ease-in-out infinite; }
+  .thinking-text { color: #8f8f8f; animation: soft-pulse 1.6s ease-in-out infinite; }
+
+  .actions { display: flex; margin: 6px 0 0 -7px; color: #5d5d5d; }
+  .actions span { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+  .actions svg { width: 18px; height: 18px; }
+
+  .fade { opacity: 0; transition: opacity 250ms ease; }
+  .fade.show { opacity: 1; }
+
+  /* Gesponserte Anzeige */
+  .sponsored hr { border: 0; border-top: 1px solid #e5e5e5; margin: 24px 0 20px; }
+  .ad {
+    display: flex; width: 564px; max-width: 100%; height: 150px; box-sizing: content-box;
+    border: 1px solid #e3e3e3; border-radius: 12px; overflow: hidden; background: #fff;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+  }
+  .ad-media { flex: none; position: relative; width: 150px; background: #f3f3f3; }
+  .ad-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ad-media.broken img { display: none; }
+  .ad-body { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 12px 14px 12px 16px; }
+  .ad-head { display: flex; align-items: center; gap: 8px; height: 24px; }
+  .ad-logo {
+    width: 20px; height: 20px; border-radius: 50%; background: #0d0d0d; color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
+  }
+  .ad-brand { font-size: 13px; font-weight: 600; line-height: 20px; }
+  .ad-tag { margin-left: auto; padding: 0 8px; border-radius: 999px; background: #f0f0f0; color: #5d5d5d; font-size: 11px; font-weight: 500; line-height: 18px; }
+  .ad-more { color: #8f8f8f; font-size: 14px; line-height: 20px; letter-spacing: 1px; }
+  .ad-title { margin-top: 6px; font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ad-desc {
+    margin-top: 2px; font-size: 13px; line-height: 18px; color: #5d5d5d;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .ad-foot { margin-top: auto; display: flex; align-items: center; justify-content: flex-end; }
+  .ad-cta {
+    font: inherit; font-size: 13px; font-weight: 500; line-height: 18px; color: #fff;
+    background: #0d0d0d; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+    touch-action: manipulation; transition: background-color 150ms ease;
+  }
+  .ad-cta:active { background: #3a3a3a; }
+  .ad-note { margin: 12px 0 0; font-size: 12px; line-height: 18px; color: #8f8f8f; }
+  .ad-note strong { font-weight: 600; color: #5d5d5d; }
+
+  .continue-wrap { display: flex; justify-content: center; margin-top: 40px; }
+  .continue {
+    font: inherit; font-size: 15px; font-weight: 500; line-height: 20px; color: #fff;
+    background: #0d0d0d; border: 0; border-radius: 999px; padding: 12px 32px; min-height: 44px;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .continue:disabled { background: #8f8f8f; cursor: default; }
+
+  /* Eingabefeld */
+  .dock { flex: none; padding: 0 24px; padding-bottom: env(safe-area-inset-bottom); background: #fff; }
+  .composer {
+    max-width: 760px; margin: 0 auto; padding: 10px;
+    border: 1px solid #dcdcdc; border-radius: 26px; background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  }
+  .field {
+    min-height: 28px; max-height: min(200px, 30vh); overflow-y: auto; padding: 4px 10px 0; margin-bottom: 8px;
+    line-height: 24px; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;
+  }
+  .placeholder { color: #8f8f8f; }
+  .caret {
+    display: inline-block; width: 2px; height: 20px; margin-left: 1px; vertical-align: -4px;
+    background: #0d0d0d; animation: blink 1s steps(1) infinite;
+  }
+  .typing .caret { animation: none; }
+  .tools { display: flex; align-items: center; gap: 8px; }
+  .tool {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px;
+    border: 1px solid #e3e3e3; border-radius: 999px; color: #5d5d5d;
+    font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap;
+  }
+  .tool svg { width: 18px; height: 18px; }
+  .tool.plus { width: 36px; padding: 0; justify-content: center; }
+  .send-wrap { position: relative; margin-left: auto; }
+  .send {
+    position: relative; z-index: 1; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #0d0d0d; color: #fff; cursor: pointer; touch-action: manipulation;
+    transition: background-color 200ms ease;
+  }
+  .send svg { width: 20px; height: 20px; }
+  .send:disabled { background: #d7d7d7; cursor: default; }
+  .send-wrap::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; background: #0d0d0d;
+    opacity: 0; pointer-events: none;
+  }
+  .send-wrap.ready::before { animation: ping 1.8s ease-out infinite; }
+  .tip {
+    position: absolute; right: calc(100% + 12px); top: 50%; z-index: 2;
+    padding: 6px 10px; border-radius: 8px; background: #0d0d0d; color: #fff;
+    font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap;
+    opacity: 0; transform: translate(-4px, -50%); transition: opacity 200ms ease, transform 200ms ease;
+    pointer-events: none;
+  }
+  .tip::after {
+    content: ''; position: absolute; left: 100%; top: 50%; margin-top: -6px;
+    border: 6px solid transparent; border-left-color: #0d0d0d;
+  }
+  .send-wrap.ready .tip { opacity: 1; transform: translate(0, -50%); }
+  .disclaimer { margin: 0; padding: 8px 0 10px; text-align: center; font-size: 12px; line-height: 16px; color: #5d5d5d; }
+
+  .send:focus-visible, .ad:focus-visible, .ad-cta:focus-visible, .continue:focus-visible {
+    outline: 2px solid #2f6fe4; outline-offset: 2px;
+  }
+
+  .enter { animation: rise 260ms ease-out both; }
+
+  @keyframes tok-in { from { opacity: 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes breathe { 0%, 100% { transform: scale(0.72); } 50% { transform: scale(1); } }
+  @keyframes soft-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.35; } 80%, 100% { transform: scale(1.75); opacity: 0; } }
+
+  @media (max-width: 600px) {
+    .topbar { padding: 0 8px 0 4px; }
+    .thread { padding: 12px 16px 32px; }
+    .dock { padding-left: 16px; padding-right: 16px; }
+    .ad { width: auto; height: auto; min-height: 150px; }
+    .ad-media { width: 120px; }
+    .ad-title { white-space: normal; }
+    .ad-desc { display: block; }
+    .ad-foot { margin-top: 10px; }
+  }
+  @media (max-width: 480px) {
+    .tool { width: 36px; padding: 0; justify-content: center; }
+    .tool-label { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tok, .enter, .thinking-dot, .thinking-text { animation: none; }
+    .send-wrap.ready::before { animation: none; opacity: 0.15; transform: scale(1.3); }
+    .fade, .tip { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar" aria-hidden="true">
+    <div class="model">ChatGPT <span data-icon="chevron"></span></div>
+    <div class="top-actions">
+      <span class="share"><span data-icon="share"></span>Share</span>
+      <span class="avatar"></span>
+    </div>
+  </header>
+
+  <main class="scroller" id="scroller">
+    <div class="thread" id="thread"></div>
+  </main>
+
+  <footer class="dock">
+    <div class="composer">
+      <div class="field" id="field" role="textbox" aria-readonly="true" aria-label="Message"><span class="placeholder" id="placeholder">Ask anything</span><span id="typed"></span><span class="caret" id="caret" hidden></span></div>
+      <div class="tools">
+        <span class="tool plus" aria-hidden="true"><span data-icon="plus"></span></span>
+        <span class="tool" aria-hidden="true"><span data-icon="globe"></span><span class="tool-label">Search</span></span>
+        <span class="tool" aria-hidden="true"><span data-icon="bulb"></span><span class="tool-label">Reason</span></span>
+        <div class="send-wrap" id="sendWrap">
+          <span class="tip" id="tip" role="tooltip"></span>
+          <button class="send" id="send" type="button" aria-label="Send message" aria-describedby="tip" disabled><span data-icon="arrow"></span></button>
+        </div>
+      </div>
+    </div>
+    <p class="disclaimer">ChatGPT can make mistakes. Check important info.</p>
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+/* ================= CONFIG: alle Zeiten und Pfade ================= */
+const CONFIG = {
+  startDelayMs: 1000,       // leerer Chat, bis der erste Buchstabe getippt wird
+  typingWpm: 238,           // Tippdauer je Nachricht = Wortzahl / typingWpm, verteilt auf die Buchstaben
+  typingJitter: 0.35,       // ±35 % Zufallsvariation je Buchstabe
+  typingSpacePause: 1.6,    // Wortanfang dauert so viel länger als ein Buchstabe im Wort
+  typingPunctPause: 4,      // Pause nach Satzzeichen (, . ? ! usw.)
+  typingSeed: 238,          // fester Startwert: alle sehen dasselbe Tippmuster (null = jedes Mal anders)
+  thinkingMs: 1800,         // Überlegzeit des Chatbots
+  thinkingStyle: 'dot',     // 'dot' = pulsierender Punkt, 'text' = „Thinking…“
+  streamWordsPerSec: 18,    // Streaming der Antwort
+  readingWpm: 238,          // Lesezeit nach jeder Antwort
+  minReadMs: 2500,          // Mindest-Lesezeit
+  adFadeMs: 600,            // Einblenden der Anzeige
+  adReadWords: 'max',       // Anzeigentext in der Lesezeit: 'max' = längste Anzeige aller Bedingungen
+                            // (Ende für alle Bedingungen gleich), 'own' = Wörter der gezeigten Anzeige
+  pauseWhenHidden: true,    // Ablauf pausiert, solange der Tab verborgen ist
+  showContinueButton: true,
+  sendTooltip: 'Click to send',
+  defaultCond: 1,
+  outputFieldId: 'IV01_01', // verstecktes Feld für JSON.stringify(LOG), z. B. interne Variable in SoSci
+  images: {
+    1: 'bottle_green.jpg',
+    2: 'bottle_orange.png',
+    3: 'app_phone.png',
+    4: 'lunchbox.png',
+  },
+};
+
+/* ================= Konversation (wörtlich) ================= */
+const CHAT = [
+  {
+    user: "I'm trying to drink more water during the day – I often forget and end up with a headache in the afternoon. I'm looking for a large water bottle, ideally 2 liters, so I can keep track of how much I drink. Do you have any recommendations?",
+    bot: "Great goal! A **2-liter water bottle** is a simple way to drink enough, because you can see at a glance how much you've had. Before I narrow it down: do you have a preference regarding color or design?",
+  },
+  {
+    user: "Yes, I'd like it in green – that's my favorite color.",
+    bot: `Good choice! There are plenty of green 2-liter bottles. Here's what to look for:
+- **Time markers:** printed hourly goals help you pace your drinking throughout the day.
+- **Leak-proof lid:** so you can carry it in your bag without worrying.
+- **BPA-free material:** safe, durable and easy to clean.
+- **Carry handle:** makes a 2-liter bottle easy to take along.
+
+If you mostly drink at your desk, I would recommend a bottle with time markers and a straw lid.`,
+  },
+];
+
+/* ================= Anzeigen je Bedingung (?cond=1 bis 4) ================= */
+const AD_BRAND = 'Novaro';
+const ADS = {
+  1: { label: 'full_match', title: 'Novaro Hydro 2L Water Bottle',
+       text: '2-liter water bottle in green with time markers and a leak-proof lid to help you drink more.' },
+  2: { label: 'feature_mismatch', title: 'Novaro Hydro 2L Water Bottle',
+       text: '2-liter water bottle in orange with time markers and a leak-proof lid to help you drink more.' },
+  3: { label: 'category_mismatch', title: 'Novaro Hydro Reminder App',
+       text: 'Smartphone app that reminds you to drink and tracks how much water you have had each day.' },
+  4: { label: 'goal_mismatch', title: 'Novaro Bento Lunch Box',
+       text: 'Leak-proof lunch box with three compartments for meals at work or on the go.' },
+};
+
+/* ================= Setup ================= */
+const params = new URLSearchParams(location.search);
+const condParam = params.get('cond');
+const COND = ADS[parseInt(condParam, 10)] ? parseInt(condParam, 10) : CONFIG.defaultCond;
+// Nur zum Testen: ?speed=10 spielt alles zehnmal so schnell ab (wird im LOG vermerkt).
+const SPEED = Math.min(50, Math.max(0.1, parseFloat(params.get('speed')) || 1));
+
+const $ = id => document.getElementById(id);
+const scroller = $('scroller'), thread = $('thread'), field = $('field'), typed = $('typed');
+const placeholder = $('placeholder'), caret = $('caret'), sendBtn = $('send'), sendWrap = $('sendWrap');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ICONS = {
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+  share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  bulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  arrow: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  up: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
+  down: '<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>',
+  speaker: '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/>',
+  edit: '<path d="M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z"/><path d="m15 5 4 4"/>',
+  regen: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+};
+const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${name === 'arrow' ? 2.25 : 1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+document.querySelectorAll('[data-icon]').forEach(el => { el.outerHTML = icon(el.dataset.icon); });
+$('tip').textContent = CONFIG.sendTooltip;
+
+// Produktbild sofort vorladen, damit es beim Einblenden in jeder Bedingung schon da ist.
+const adImg = new Image();
+adImg.alt = '';
+adImg.width = 150;
+adImg.height = 150;
+adImg.decoding = 'async';
+adImg.src = CONFIG.images[COND];
+
+/* ================= LOG ================= */
+const t = () => Math.round(performance.now()); // ms seit Seitenstart
+const LOG = {
+  version: '1.0',
+  cond: COND,
+  cond_label: ADS[COND].label,
+  cond_param: condParam,
+  speed: SPEED,
+  start_iso: new Date().toISOString(),
+  viewport: window.innerWidth + 'x' + window.innerHeight,
+  t_start: null,
+  t_typing1_end: null, t_send1_enabled: null, t_send1_click: null, send1_wait_ms: null, send1_method: null,
+  t_answer1_start: null, t_answer1_end: null, read1_ms: null,
+  t_typing2_end: null, t_send2_enabled: null, t_send2_click: null, send2_wait_ms: null, send2_method: null,
+  t_answer2_start: null, t_answer2_end: null, read2_ms: null,
+  t_ad_shown: null,
+  t_done: null,
+  t_continue_click: null,
+  ad_image_error: false,
+  ad_click_count: 0,
+  shop_now_click_count: 0,
+  ad_clicks: [],
+  focus_lost: false,
+  hidden_count: 0,
+  hidden_ms: 0,
+  visibility: [],
+  window_blur_count: 0,
+};
+
+function save() {
+  const json = JSON.stringify(LOG);
+  const docs = [document];
+  try { if (window.parent !== window && window.parent.document) docs.push(window.parent.document); } catch (e) { /* fremde Domain */ }
+  docs.forEach(doc => {
+    const input = doc.getElementById(CONFIG.outputFieldId);
+    if (input) input.value = json;
+  });
+}
+
+function post(type) {
+  try { window.parent.postMessage({ type, data: LOG }, '*'); } catch (e) { /* ignorieren */ }
+}
+
+/* ================= Uhr (pausiert bei verborgenem Tab) ================= */
+let hiddenSince = document.hidden ? performance.now() : null;
+let hiddenTotal = 0;
+
+function clock() {
+  if (!CONFIG.pauseWhenHidden) return performance.now();
+  const open = hiddenSince === null ? 0 : performance.now() - hiddenSince;
+  return performance.now() - hiddenTotal - open;
+}
+function waitUntil(target) {
+  return new Promise(resolve => {
+    (function tick() {
+      const left = target - clock();
+      if (left <= 0) resolve();
+      else setTimeout(tick, left);
+    })();
+  });
+}
+const wait = ms => waitUntil(clock() + ms);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenSince = performance.now();
+    LOG.focus_lost = true;
+    LOG.hidden_count++;
+  } else if (hiddenSince !== null) {
+    const d = performance.now() - hiddenSince;
+    hiddenTotal += d;
+    LOG.hidden_ms += Math.round(d);
+    hiddenSince = null;
+  }
+  if (LOG.visibility.length < 100) LOG.visibility.push({ t: t(), state: document.visibilityState });
+  save();
+});
+window.addEventListener('blur', () => { LOG.window_blur_count++; });
+
+/* ================= Hilfsfunktionen ================= */
+function el(tag, cls, html) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (html) node.innerHTML = html;
+  return node;
+}
+function fadeIn(node, ms) {
+  node.classList.add('fade');
+  if (ms) node.style.transitionDuration = ms + 'ms';
+  void node.offsetWidth;
+  node.classList.add('show');
+}
+
+// Weiches Mitscrollen: nähert sich pro Frame dem Ende an.
+let following = false;
+function scrollToEnd() {
+  if (following) return;
+  following = true;
+  requestAnimationFrame(function step() {
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    const d = max - scroller.scrollTop;
+    if (d <= 1 || reduceMotion) {
+      scroller.scrollTop = max;
+      following = false;
+      return;
+    }
+    scroller.scrollTop += Math.ceil(d * 0.18);
+    requestAnimationFrame(step);
+  });
+}
+
+// Fester Zufallsgenerator (mulberry32), damit das Tippmuster reproduzierbar ist.
+const rand = (seed => {
+  if (seed === null || seed === undefined) return Math.random;
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let x = Math.imul(a ^ (a >>> 15), 1 | a);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+})(CONFIG.typingSeed);
+
+const plain = md => md.replace(/\*\*/g, '').replace(/^\s*[-*]\s+/gm, '');
+const countWords = text => plain(text).trim().split(/\s+/).filter(Boolean).length;
+const readMs = words => Math.max(CONFIG.minReadMs, words / CONFIG.readingWpm * 60000);
+const adWords = c => countWords(ADS[c].title + ' ' + ADS[c].text);
+const AD_READ_WORDS = CONFIG.adReadWords === 'own'
+  ? adWords(COND)
+  : Math.max(...Object.keys(ADS).map(adWords));
+
+/* ================= Mini-Markdown: Absätze, Aufzählung, **fett** ================= */
+function runs(s) {
+  return s.split(/\*\*(.+?)\*\*/).map((text, i) => ({ text, bold: i % 2 === 1 })).filter(r => r.text);
+}
+function parseMd(md) {
+  const blocks = [];
+  md.trim().split('\n').forEach(raw => {
+    const line = raw.trim();
+    const last = blocks[blocks.length - 1];
+    const item = line.match(/^[-*]\s+(.*)$/);
+    if (!line) blocks.push(null);
+    else if (item && last && last.list) last.items.push(runs(item[1]));
+    else if (item) blocks.push({ list: true, items: [runs(item[1])] });
+    else if (last && !last.list) last.items[0].push(...runs(' ' + line));
+    else blocks.push({ list: false, items: [runs(line)] });
+  });
+  return blocks.filter(Boolean);
+}
+// Zerlegt in Wörter, die jeweils wissen, in welchen Absatz/Listenpunkt/Fettlauf sie gehören.
+function tokenize(blocks) {
+  const out = [];
+  blocks.forEach((block, b) => block.items.forEach((line, l) => line.forEach((run, r) => {
+    const words = run.text.match(/\s*\S+(?:\s+$)?/g);
+    if (!words) { if (out.length) out[out.length - 1].w += run.text; return; }
+    words.forEach(w => out.push({ b, l, r, w, list: block.list, bold: run.bold }));
+  })));
+  return out;
+}
+function renderer(root) {
+  const nodes = new Map();
+  const get = (key, parent, tag) => {
+    let node = nodes.get(key);
+    if (!node) { node = document.createElement(tag); parent.appendChild(node); nodes.set(key, node); }
+    return node;
+  };
+  return tok => {
+    let parent = get('b' + tok.b, root, tok.list ? 'ul' : 'p');
+    if (tok.list) parent = get(`b${tok.b}.${tok.l}`, parent, 'li');
+    if (tok.bold) parent = get(`b${tok.b}.${tok.l}.${tok.r}`, parent, 'strong');
+    parent.appendChild(el('span', 'tok')).textContent = tok.w;
+  };
+}
+
+/* ================= Bausteine des Ablaufs ================= */
+async function typeIntoField(text) {
+  const chars = Array.from(text);
+  const total = countWords(text) * 60000 / CONFIG.typingWpm / SPEED;
+  // Gewicht je Abstand: zufällig, länger am Wortanfang und nach Satzzeichen.
+  // Die Gewichte werden auf die Gesamtdauer skaliert, die Tippdauer bleibt also exakt.
+  const weights = chars.slice(1).map((ch, i) => {
+    const prev = chars[i];
+    let w = 1 + CONFIG.typingJitter * (2 * rand() - 1);
+    if (/[.,;:!?–]/.test(prev)) w *= CONFIG.typingPunctPause;
+    else if (prev === ' ') w *= CONFIG.typingSpacePause;
+    return w;
+  });
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  let due = clock();
+  caret.hidden = false;
+  field.classList.add('typing');
+  for (let i = 0; i < chars.length; i++) {
+    if (i > 0) {
+      due += total * weights[i - 1] / sum;
+      await waitUntil(due);
+    }
+    typed.textContent += chars[i];
+    placeholder.hidden = true;
+    field.scrollTop = field.scrollHeight;
+    scrollToEnd();
+  }
+  field.classList.remove('typing');
+}
+
+function waitForSend(n) {
+  return new Promise(resolve => {
+    LOG[`t_send${n}_enabled`] = t();
+    sendBtn.disabled = false;
+    sendWrap.classList.add('ready');
+    const go = method => {
+      if (sendBtn.disabled) return;
+      const now = t();
+      sendBtn.disabled = true;
+      sendWrap.classList.remove('ready');
+      sendBtn.removeEventListener('click', onClick);
+      window.removeEventListener('keydown', onKey);
+      LOG[`t_send${n}_click`] = now;
+      LOG[`send${n}_wait_ms`] = now - LOG[`t_send${n}_enabled`];
+      LOG[`send${n}_method`] = method;
+      resolve();
+    };
+    const onClick = () => go('click');
+    const onKey = e => {
+      if (e.key !== 'Enter' || e.repeat || e.isComposing) return;
+      e.preventDefault();
+      go('enter');
+    };
+    sendBtn.addEventListener('click', onClick);
+    window.addEventListener('keydown', onKey);
+  });
+}
+
+function postUserMessage(text) {
+  typed.textContent = '';
+  placeholder.hidden = false;
+  caret.hidden = true;
+  const row = el('div', 'turn-user enter');
+  row.appendChild(el('div', 'bubble')).textContent = text;
+  thread.appendChild(row);
+  scrollToEnd();
+}
+
+function startBotTurn() {
+  const turn = el('div', 'turn-bot');
+  const thinking = el('div', 'thinking', CONFIG.thinkingStyle === 'text'
+    ? '<span class="thinking-text">Thinking…</span>'
+    : '<span class="thinking-dot"></span>');
+  turn.appendChild(thinking);
+  thread.appendChild(turn);
+  scrollToEnd();
+  return { turn, thinking };
+}
+
+async function streamAnswer(turn, thinking, md) {
+  const tokens = tokenize(parseMd(md));
+  const md$ = el('div', 'md');
+  const place = renderer(md$);
+  const step = 1000 / CONFIG.streamWordsPerSec / SPEED;
+  thinking.replaceWith(md$);
+  const t0 = clock();
+  for (let i = 0; i < tokens.length; i++) {
+    if (i > 0) await waitUntil(t0 + i * step);
+    place(tokens[i]);
+    scrollToEnd();
+  }
+}
+
+function showActions(turn) {
+  const row = el('div', 'actions', ['copy', 'up', 'down', 'speaker', 'edit', 'regen']
+    .map(name => `<span>${icon(name)}</span>`).join(''));
+  row.setAttribute('aria-hidden', 'true');
+  turn.appendChild(row);
+  fadeIn(row);
+}
+
+function showAd(turn) {
+  const ad = ADS[COND];
+  const box = el('div', 'sponsored', `
+    <hr>
+    <div class="ad" role="link" tabindex="0">
+      <div class="ad-media" data-target="image"></div>
+      <div class="ad-body">
+        <div class="ad-head">
+          <span class="ad-logo" data-target="logo">N</span>
+          <span class="ad-brand" data-target="brand"></span>
+          <span class="ad-tag" data-target="ad_label">Ad</span>
+          <span class="ad-more" data-target="menu">···</span>
+        </div>
+        <div class="ad-title" data-target="title"></div>
+        <div class="ad-desc" data-target="description"></div>
+        <div class="ad-foot">
+          <button class="ad-cta" type="button" data-target="shop_now">Shop Now</button>
+        </div>
+      </div>
+    </div>
+    <p class="ad-note">Ads do not influence the answers you get from ChatGPT. Your chats stay private. <strong>Learn about ads ›</strong></p>`);
+  const card = box.querySelector('.ad');
+  const media = box.querySelector('.ad-media');
+  card.setAttribute('aria-label', 'Sponsored: ' + ad.title);
+  box.querySelector('.ad-brand').textContent = AD_BRAND;
+  box.querySelector('.ad-title').textContent = ad.title;
+  box.querySelector('.ad-desc').textContent = ad.text;
+  media.appendChild(adImg);
+  if (adImg.complete && !adImg.naturalWidth) markBroken();
+  adImg.addEventListener('error', markBroken);
+  function markBroken() { media.classList.add('broken'); LOG.ad_image_error = true; save(); }
+
+  // Klicks nur protokollieren, keine Weiterleitung.
+  const logClick = target => {
+    LOG.ad_clicks.push({ t: t(), target });
+    LOG.ad_click_count = LOG.ad_clicks.length;
+    if (target === 'shop_now') LOG.shop_now_click_count++;
+    save();
+    if (LOG.t_done !== null) post('chat_update');
+  };
+  card.addEventListener('click', e => {
+    e.preventDefault();
+    const hit = e.target.closest('[data-target]');
+    logClick(hit ? hit.dataset.target : 'card');
+  });
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target === card) { e.preventDefault(); logClick('card_keyboard'); }
+  });
+
+  turn.appendChild(box);
+  fadeIn(box, CONFIG.adFadeMs / SPEED);
+  scrollToEnd();
+}
+
+function showContinue() {
+  const wrap = el('div', 'continue-wrap');
+  const btn = wrap.appendChild(el('button', 'continue'));
+  btn.type = 'button';
+  btn.textContent = 'Continue';
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    LOG.t_continue_click = t();
+    save();
+    post('chat_continue');
+  });
+  thread.appendChild(wrap);
+  fadeIn(wrap, 300);
+  scrollToEnd();
+}
+
+/* ================= Ablauf ================= */
+async function run() {
+  LOG.t_start = t();
+  save();
+  await wait(CONFIG.startDelayMs / SPEED);
+
+  for (let i = 0; i < CHAT.length; i++) {
+    const n = i + 1;
+    const last = n === CHAT.length;
+
+    await typeIntoField(CHAT[i].user);
+    LOG[`t_typing${n}_end`] = t();
+    save();
+
+    await waitForSend(n);
+    postUserMessage(CHAT[i].user);
+    const { turn, thinking } = startBotTurn();
+    save();
+
+    await wait(CONFIG.thinkingMs / SPEED);
+    LOG[`t_answer${n}_start`] = t();
+    await streamAnswer(turn, thinking, CHAT[i].bot);
+    showActions(turn);
+    LOG[`t_answer${n}_end`] = t();
+
+    let words = countWords(CHAT[i].bot);
+    if (last) {
+      showAd(turn);
+      LOG.t_ad_shown = t();
+      words += AD_READ_WORDS;
+    }
+    scrollToEnd();
+    LOG[`read${n}_ms`] = Math.round(readMs(words));
+    save();
+    await wait(readMs(words) / SPEED);
+  }
+
+  LOG.t_done = t();
+  if (CONFIG.showContinueButton) showContinue();
+  save();
+  post('chat_done');
+}
+
+run();
+</script>
+</body>
+</html>
