@@ -105,8 +105,12 @@
     margin-top: 2px; font-size: 13px; line-height: 18px; color: #5d5d5d;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .ad-foot { margin-top: auto; display: flex; align-items: center; justify-content: flex-end; }
+  .ad-foot { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+  .ad-meta { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 600; line-height: 18px; }
+  .ad-meta svg { width: 15px; height: 15px; }
+  .ad-meta.price { font-size: 16px; line-height: 22px; }
   .ad-cta {
+    margin-left: auto;
     font: inherit; font-size: 13px; font-weight: 500; line-height: 18px; color: #fff;
     background: #0d0d0d; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
     touch-action: manipulation; transition: background-color 150ms ease;
@@ -115,13 +119,29 @@
   .ad-note { margin: 12px 0 0; font-size: 12px; line-height: 18px; color: #8f8f8f; }
   .ad-note strong { font-weight: 600; color: #5d5d5d; }
 
-  .continue-wrap { display: flex; justify-content: center; margin-top: 40px; }
-  .continue {
-    font: inherit; font-size: 15px; font-weight: 500; line-height: 20px; color: #fff;
-    background: #0d0d0d; border: 0; border-radius: 999px; padding: 12px 32px; min-height: 44px;
-    cursor: pointer; touch-action: manipulation;
+  /* Abschluss-Pop-up */
+  .end-backdrop {
+    position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background: rgba(0, 0, 0, 0.45);
+    opacity: 0; transition: opacity 220ms ease;
   }
-  .continue:disabled { background: #8f8f8f; cursor: default; }
+  .end-dialog {
+    width: 100%; max-width: 420px; padding: 24px; border-radius: 16px; background: #fff;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    transform: translateY(8px) scale(0.98); transition: transform 220ms ease;
+  }
+  .end-backdrop.show { opacity: 1; }
+  .end-backdrop.show .end-dialog { transform: none; }
+  .end-dialog h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; line-height: 26px; }
+  .end-dialog p { margin: 0 0 20px; font-size: 15px; line-height: 22px; color: #5d5d5d; }
+  .end-btn {
+    width: 100%; min-height: 44px; padding: 12px 24px; border: 0; border-radius: 999px;
+    font: inherit; font-size: 15px; font-weight: 500; line-height: 20px; color: #fff; background: #0d0d0d;
+    cursor: pointer; touch-action: manipulation; transition: background-color 150ms ease;
+  }
+  .end-btn:active { background: #3a3a3a; }
+  .end-btn:disabled { background: #8f8f8f; cursor: default; }
+  .end-dialog .end-note { margin: 12px 0 0; font-size: 13px; line-height: 18px; color: #8f8f8f; text-align: center; }
 
   /* Eingabefeld */
   .dock { flex: none; padding: 0 24px; padding-bottom: env(safe-area-inset-bottom); background: #fff; }
@@ -176,7 +196,7 @@
   .send-wrap.ready .tip { opacity: 1; transform: translate(0, -50%); }
   .disclaimer { margin: 0; padding: 8px 0 10px; text-align: center; font-size: 12px; line-height: 16px; color: #5d5d5d; }
 
-  .send:focus-visible, .ad:focus-visible, .ad-cta:focus-visible, .continue:focus-visible {
+  .send:focus-visible, .ad:focus-visible, .ad-cta:focus-visible, .end-btn:focus-visible {
     outline: 2px solid #2f6fe4; outline-offset: 2px;
   }
 
@@ -207,7 +227,7 @@
   @media (prefers-reduced-motion: reduce) {
     .tok, .enter, .thinking-dot, .thinking-text { animation: none; }
     .send-wrap.ready::before { animation: none; opacity: 0.15; transform: scale(1.3); }
-    .fade, .tip { transition: none; }
+    .fade, .tip, .end-backdrop, .end-dialog { transition: none; }
   }
 </style>
 </head>
@@ -242,6 +262,15 @@
   </footer>
 </div>
 
+<div class="end-backdrop" id="endDialog" hidden>
+  <div class="end-dialog" role="dialog" aria-modal="true" aria-labelledby="endTitle" aria-describedby="endText">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <button class="end-btn" id="endBtn" type="button"></button>
+    <p class="end-note" id="endNote" hidden></p>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -258,59 +287,173 @@ const CONFIG = {
   streamWordsPerSec: 18,    // Streaming der Antwort
   readingWpm: 238,          // Lesezeit nach jeder Antwort
   minReadMs: 2500,          // Mindest-Lesezeit
+  replyReadFactor: 0.5,     // Nutzer antwortet schneller: Pause vor der nächsten Nutzernachricht
+                            // = 50 % der Lesezeit (gilt nicht für die letzte Antwort mit Anzeige)
+  minReplyReadMs: 1500,     // Mindestpause vor der nächsten Nutzernachricht
   adFadeMs: 600,            // Einblenden der Anzeige
   adReadWords: 'max',       // Anzeigentext in der Lesezeit: 'max' = längste Anzeige aller Bedingungen
-                            // (Ende für alle Bedingungen gleich), 'own' = Wörter der gezeigten Anzeige
+                            // des Falls (Ende für alle Bedingungen gleich), 'own' = Wörter der gezeigten Anzeige
   pauseWhenHidden: true,    // Ablauf pausiert, solange der Tab verborgen ist
-  showContinueButton: true,
+  endDialog: true,          // am Ende Pop-up „Fenster schließen, zurück zur Umfrage“
+  endTitle: 'The conversation is complete',
+  endText: 'You can close the window and return to the survey.',
+  endButton: 'Close window',
+  endCloseFailed: 'This window could not be closed automatically. Please close it yourself.',
   sendTooltip: 'Click to send',
-  defaultCond: 1,
+  defaultCond: 1,           // bei fehlendem oder ungültigem ?cond=
   outputFieldId: 'IV01_01', // verstecktes Feld für JSON.stringify(LOG), z. B. interne Variable in SoSci
-  images: {
-    1: 'bottle_green.jpg',
-    2: 'bottle_orange.png',
-    3: 'app_phone.png',
-    4: 'lunchbox.png',
-  },
 };
 
-/* ================= Konversation (wörtlich) ================= */
-const CHAT = [
-  {
-    user: "I'm trying to drink more water during the day – I often forget and end up with a headache in the afternoon. I'm looking for a large water bottle, ideally 2 liters, so I can keep track of how much I drink. Do you have any recommendations?",
-    bot: "Great goal! A **2-liter water bottle** is a simple way to drink enough, because you can see at a glance how much you've had. Before I narrow it down: do you have a preference regarding color or design?",
+/* ================= Use Cases mit Konversation (wörtlich) und Anzeigen (je 4 Bedingungen) =================
+   Quelle: „NIM Projekt: Sponsored Ads, Studie 2.5“. Anzeigen: 1 full_match, 2 feature_mismatch,
+   3 category_mismatch, 4 goal_mismatch. meta = Zeile links neben dem Button (Icon + Text oder Preis).
+   Welche ?cond= zu welchem Use Case gehört, steht in LINKS darunter. */
+const AD_BRAND = 'Novaro';
+const CASES = {
+  // Idea 1: Kopfhörer, Feature = Farbe Schwarz
+  headphones: {
+    chat: [
+      {
+        user: "I work from home, and it's often really noisy – my kids, the neighbors, traffic outside. I'm looking for noise-cancelling over-ear headphones so I can focus on my work. Do you have any recommendations?",
+        bot: "Happy to help! Over-ear headphones with **active noise cancellation (ANC)** are a great choice for focused work at home. Before I narrow it down: do you have a preference regarding color or design?",
+      },
+      {
+        user: "Yes, I'd like them in black – that fits my home office setup.",
+        bot: `Good choice! There are plenty of black over-ear headphones with ANC. Here's what to look for:
+- **Effective ANC:** reduces constant sounds like traffic, voices or household noise.
+- **Comfortable fit:** soft ear cushions and a padded headband so you can wear them for hours.
+- **Battery life:** at least 20–30 hours per charge so you don't have to recharge every day.
+- **Transparency mode:** lets you hear your family without taking the headphones off.
+
+If you mostly work at your desk, I would recommend prioritizing comfort and noise-cancelling strength.`,
+      },
+    ],
+    ads: {
+      1: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/headphones_black.jpg',
+           text: 'Wireless over-ear headphones in matte black with active noise cancellation for distraction-free work.' },
+      2: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/headphones_silver.jpg',
+           text: 'Wireless over-ear headphones in silver with active noise cancellation for distraction-free work.' },
+      3: { title: 'Novaro Calm Sound-Absorbing Curtains', img: 'img/curtains.jpg',
+           text: 'Heavy sound-absorbing curtains that reduce background noise for distraction-free work.' },
+      4: { title: 'Novaro Silent Disco Ticket', img: 'img/silent_disco.jpg',
+           text: 'Ticket for a silent disco night with live DJs and wireless LED headphones to dance the night away.' },
+    },
   },
-  {
-    user: "Yes, I'd like it in green – that's my favorite color.",
-    bot: `Good choice! There are plenty of green 2-liter bottles. Here's what to look for:
+
+  // Idea 2: Trinkflasche, Feature = mindestens 2 Liter
+  bottle: {
+    chat: [
+      {
+        user: "I'm trying to drink more water during the day – I often forget and end up with a headache in the afternoon. I'm looking for a water bottle that helps me keep track of how much I drink. Do you have any recommendations?",
+        bot: "Great goal! A water bottle with **time markers** is a simple way to drink enough, because you can see at a glance how much you've had. Before I narrow it down: what size are you looking for?",
+      },
+      {
+        user: "2 liters or more – I'm often on the go for longer periods where I can't refill it.",
+        bot: `Makes sense! With a bottle that holds 2 liters or more, you won't have to refill it during the day. Here's what to look for:
 - **Time markers:** printed hourly goals help you pace your drinking throughout the day.
 - **Leak-proof lid:** so you can carry it in your bag without worrying.
 - **BPA-free material:** safe, durable and easy to clean.
-- **Carry handle:** makes a 2-liter bottle easy to take along.
+- **Carry handle:** makes a large bottle easy to take along.
 
-If you mostly drink at your desk, I would recommend a bottle with time markers and a straw lid.`,
+If you're on the go a lot, I would recommend a lightweight bottle with a sturdy carry handle.`,
+      },
+    ],
+    ads: {
+      1: { title: 'Novaro Hydro 2L Water Bottle', img: 'img/bottle_2l.jpg',
+           text: '2-liter water bottle with time markers and a leak-proof lid to help you drink more.' },
+      2: { title: 'Novaro Hydro 1L Water Bottle', img: 'img/bottle_1l.jpg',
+           text: '1-liter water bottle with time markers and a leak-proof lid to help you drink more.' },
+      3: { title: 'Novaro Hydro Reminder App', img: 'img/reminder_app.jpg',
+           text: 'Smartphone app with drink reminders and daily tracking to help you drink more.' },
+      4: { title: 'Novaro Bento Lunch Box', img: 'img/lunchbox.jpg',
+           text: 'Leak-proof lunch box with three compartments for meals at work or on the go.' },
+    },
   },
-];
 
-/* ================= Anzeigen je Bedingung (?cond=1 bis 4) ================= */
-const AD_BRAND = 'Novaro';
-const ADS = {
-  1: { label: 'full_match', title: 'Novaro Hydro 2L Water Bottle',
-       text: '2-liter water bottle in green with time markers and a leak-proof lid to help you drink more.' },
-  2: { label: 'feature_mismatch', title: 'Novaro Hydro 2L Water Bottle',
-       text: '2-liter water bottle in orange with time markers and a leak-proof lid to help you drink more.' },
-  3: { label: 'category_mismatch', title: 'Novaro Hydro Reminder App',
-       text: 'Smartphone app that reminds you to drink and tracks how much water you have had each day.' },
-  4: { label: 'goal_mismatch', title: 'Novaro Bento Lunch Box',
-       text: 'Leak-proof lunch box with three compartments for meals at work or on the go.' },
+  // Idea 3: Restaurant (Erfahrungsgut), Feature = höchstens 15 Minuten entfernt
+  restaurant: {
+    cta: 'Learn More',
+    chat: [
+      {
+        user: "I'd love to have some really good, authentic Asian food this weekend – Thai or Vietnamese, for example. Can you recommend a good Asian restaurant?",
+        bot: "Great idea! **Thai and Vietnamese cuisine** is perfect if you're looking for fresh, authentic flavors. Before I narrow it down: how far are you willing to travel to the restaurant?",
+      },
+      {
+        user: "Not too far – ideally no more than 15 minutes from my home.",
+        bot: `Good to know! Here's what to look for in a good Thai or Vietnamese restaurant:
+- **Authentic dishes:** classics like pho, curry or summer rolls made with fresh herbs.
+- **Fresh ingredients:** dishes prepared to order rather than pre-made.
+- **Cozy atmosphere:** a relaxed setting so you can really enjoy your meal.
+- **Reviews on taste:** look for comments on flavor and authenticity.
+
+If you'd like an authentic experience, I would recommend a small, family-run Thai or Vietnamese restaurant.`,
+      },
+    ],
+    ads: {
+      1: { title: 'Novaro Kitchen – Thai & Vietnamese', img: 'img/restaurant.jpg', meta: { icon: 'pin', text: '10 min from you' },
+           text: 'Authentic Thai and Vietnamese dishes like pho, curry and summer rolls, freshly prepared every day.' },
+      2: { title: 'Novaro Kitchen – Thai & Vietnamese', img: 'img/restaurant.jpg', meta: { icon: 'pin', text: '45 min from you' },
+           text: 'Authentic Thai and Vietnamese dishes like pho, curry and summer rolls, freshly prepared every day.' },
+      3: { title: 'Novaro Kitchen Asian Cooking Box', img: 'img/cooking_box.jpg', meta: { icon: 'truck', text: 'Delivered to your door' },
+           text: 'Fresh ingredients and step-by-step recipes for an authentic Thai or Vietnamese dinner for two at home.' },
+      4: { title: 'Novaro Vietnamese Massage', img: 'img/massage.jpg', meta: { icon: 'pin', text: '10 min from you' },
+           text: 'Traditional Vietnamese massage in a calm spa setting to relax body and mind.' },
+    },
+  },
+
+  // Alter Stimulus: Kopfhörer, Feature = Budget unter $100 (eine Runde, Preis in der Anzeige)
+  budget: {
+    chat: [
+      {
+        user: "I'm looking for noise-cancelling headphones so I can block out background noise while I'm working. Ideally over-ear, and my budget is under $100. Do you have any recommendations?",
+        bot: `Good idea! Over-ear headphones with **active noise cancellation (ANC)** can make a big difference for focused work, and there are solid options under $100. Here's what to look for:
+- **Effective ANC:** reduces constant sounds like traffic, air conditioning or office chatter.
+- **Comfortable fit:** soft ear cushions and a padded headband so you can wear them for hours.
+- **Battery life:** at least 20–30 hours per charge so you don't have to recharge every day.
+- **Transparency mode:** lets you hear colleagues without taking the headphones off.
+
+If you mostly work at a desk, prioritize comfort and noise-cancelling strength over sporty features.`,
+      },
+    ],
+    ads: {
+      1: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/budget_headphones.jpg', meta: { price: '$89' },
+           text: 'Wireless over-ear headphones with active noise cancellation for distraction-free work.' },
+      2: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/budget_headphones.jpg', meta: { price: '$279' },
+           text: 'Wireless over-ear headphones with active noise cancellation for distraction-free work.' },
+      3: { title: 'Novaro Calm Noise-Reducing Earplugs', img: 'img/earplugs.jpg', meta: { price: '$89' },
+           text: 'Reusable noise-reducing earplugs that soften background noise while you work.' },
+      4: { title: 'Novaro SoundBox Mini Bluetooth Speaker', img: 'img/speaker.jpg', meta: { price: '$89' },
+           text: 'Portable Bluetooth speaker with rich, room-filling sound for your desk or on the go.' },
+    },
+  },
 };
+const COND_LABELS = { 1: 'full_match', 2: 'feature_mismatch', 3: 'category_mismatch', 4: 'goal_mismatch' };
+
+/* ================= Links: ?cond=1 bis 16, je vier pro Use Case =================
+   1–4   bottle      (Trinkflasche, wie bisher)
+   5–8   headphones  (Kopfhörer schwarz)
+   9–12  restaurant  (Thai/Vietnamesisch)
+   13–16 budget      (alter Stimulus, Kopfhörer unter $100)
+   Innerhalb jedes Blocks: 1. full_match, 2. feature_mismatch, 3. category_mismatch, 4. goal_mismatch. */
+const LINKS = ['bottle', 'headphones', 'restaurant', 'budget'];
 
 /* ================= Setup ================= */
 const params = new URLSearchParams(location.search);
 const condParam = params.get('cond');
-const COND = ADS[parseInt(condParam, 10)] ? parseInt(condParam, 10) : CONFIG.defaultCond;
+const COND = (n => (Number.isInteger(n) && n >= 1 && n <= LINKS.length * 4 ? n : CONFIG.defaultCond))(Number(condParam));
+const CASE = LINKS[Math.floor((COND - 1) / 4)];
+const AD_COND = (COND - 1) % 4 + 1;  // Anzeige 1 bis 4 innerhalb des Use Cases
+const { chat: CHAT, ads: ADS, cta: CTA_LABEL = 'Shop Now' } = CASES[CASE];
 // Nur zum Testen: ?speed=10 spielt alles zehnmal so schnell ab (wird im LOG vermerkt).
 const SPEED = Math.min(50, Math.max(0.1, parseFloat(params.get('speed')) || 1));
+// Optional: ?return=https://… öffnet diese Adresse beim Klick auf den Button im Pop-up.
+const RETURN_URL = (() => {
+  try {
+    const u = new URL(params.get('return'));
+    return /^https?:$/.test(u.protocol) ? u.href : null;
+  } catch (e) { return null; }
+})();
+const IN_FRAME = window.parent !== window;
 
 const $ = id => document.getElementById(id);
 const scroller = $('scroller'), thread = $('thread'), field = $('field'), typed = $('typed');
@@ -330,6 +473,8 @@ const ICONS = {
   speaker: '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/>',
   edit: '<path d="M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z"/><path d="m15 5 4 4"/>',
   regen: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
 };
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${name === 'arrow' ? 2.25 : 1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 document.querySelectorAll('[data-icon]').forEach(el => { el.outerHTML = icon(el.dataset.icon); });
@@ -341,14 +486,16 @@ adImg.alt = '';
 adImg.width = 150;
 adImg.height = 150;
 adImg.decoding = 'async';
-adImg.src = CONFIG.images[COND];
+adImg.src = ADS[AD_COND].img;
 
 /* ================= LOG ================= */
 const t = () => Math.round(performance.now()); // ms seit Seitenstart
 const LOG = {
-  version: '1.0',
-  cond: COND,
-  cond_label: ADS[COND].label,
+  version: '1.1',
+  cond: COND,               // 1 bis 16, wie im Link
+  case: CASE,
+  ad_cond: AD_COND,         // 1 bis 4 innerhalb des Use Cases
+  cond_label: COND_LABELS[AD_COND],
   cond_param: condParam,
   speed: SPEED,
   start_iso: new Date().toISOString(),
@@ -360,10 +507,14 @@ const LOG = {
   t_answer2_start: null, t_answer2_end: null, read2_ms: null,
   t_ad_shown: null,
   t_done: null,
-  t_continue_click: null,
+  t_end_dialog_shown: null,
+  t_continue_click: null,   // Klick auf „Return to survey“ im Pop-up
+  continue_method: null,    // 'close_window' | 'return_url' | 'parent' (im iframe: postMessage an SoSci)
+  window_closed: null,      // true, wenn sich das Fenster per Klick schließen ließ
   ad_image_error: false,
   ad_click_count: 0,
-  shop_now_click_count: 0,
+  cta_label: CTA_LABEL,
+  cta_click_count: 0,       // Klicks auf den Button der Anzeige (Shop Now bzw. Learn More)
   ad_clicks: [],
   focus_lost: false,
   hidden_count: 0,
@@ -469,9 +620,10 @@ const rand = (seed => {
 const plain = md => md.replace(/\*\*/g, '').replace(/^\s*[-*]\s+/gm, '');
 const countWords = text => plain(text).trim().split(/\s+/).filter(Boolean).length;
 const readMs = words => Math.max(CONFIG.minReadMs, words / CONFIG.readingWpm * 60000);
-const adWords = c => countWords(ADS[c].title + ' ' + ADS[c].text);
+const metaText = meta => (meta ? meta.price || meta.text : '');
+const adWords = c => countWords([ADS[c].title, ADS[c].text, metaText(ADS[c].meta)].join(' '));
 const AD_READ_WORDS = CONFIG.adReadWords === 'own'
-  ? adWords(COND)
+  ? adWords(AD_COND)
   : Math.max(...Object.keys(ADS).map(adWords));
 
 /* ================= Mini-Markdown: Absätze, Aufzählung, **fett** ================= */
@@ -619,7 +771,7 @@ function showActions(turn) {
 }
 
 function showAd(turn) {
-  const ad = ADS[COND];
+  const ad = ADS[AD_COND];
   const box = el('div', 'sponsored', `
     <hr>
     <div class="ad" role="link" tabindex="0">
@@ -634,7 +786,7 @@ function showAd(turn) {
         <div class="ad-title" data-target="title"></div>
         <div class="ad-desc" data-target="description"></div>
         <div class="ad-foot">
-          <button class="ad-cta" type="button" data-target="shop_now">Shop Now</button>
+          <button class="ad-cta" type="button" data-target="cta"></button>
         </div>
       </div>
     </div>
@@ -645,6 +797,13 @@ function showAd(turn) {
   box.querySelector('.ad-brand').textContent = AD_BRAND;
   box.querySelector('.ad-title').textContent = ad.title;
   box.querySelector('.ad-desc').textContent = ad.text;
+  box.querySelector('.ad-cta').textContent = CTA_LABEL;
+  if (ad.meta) {
+    const meta = el('span', ad.meta.price ? 'ad-meta price' : 'ad-meta', ad.meta.icon ? icon(ad.meta.icon) : '');
+    meta.dataset.target = ad.meta.price ? 'price' : 'meta';
+    meta.appendChild(document.createTextNode(metaText(ad.meta)));
+    box.querySelector('.ad-foot').prepend(meta);
+  }
   media.appendChild(adImg);
   if (adImg.complete && !adImg.naturalWidth) markBroken();
   adImg.addEventListener('error', markBroken);
@@ -654,7 +813,7 @@ function showAd(turn) {
   const logClick = target => {
     LOG.ad_clicks.push({ t: t(), target });
     LOG.ad_click_count = LOG.ad_clicks.length;
-    if (target === 'shop_now') LOG.shop_now_click_count++;
+    if (target === 'cta') LOG.cta_click_count++;
     save();
     if (LOG.t_done !== null) post('chat_update');
   };
@@ -672,20 +831,40 @@ function showAd(turn) {
   scrollToEnd();
 }
 
-function showContinue() {
-  const wrap = el('div', 'continue-wrap');
-  const btn = wrap.appendChild(el('button', 'continue'));
-  btn.type = 'button';
-  btn.textContent = 'Continue';
+// Pop-up am Ende. Der Klick schließt das Fenster (Stimulus in eigenem Tab/Fenster geöffnet),
+// öffnet ?return=… oder meldet im iframe 'chat_continue' an die Umfrage.
+// Lässt der Browser das Schließen nicht zu, erscheint ein Hinweis, das Fenster selbst zu schließen.
+function showEndDialog() {
+  const backdrop = $('endDialog'), btn = $('endBtn'), note = $('endNote');
+  $('endTitle').textContent = CONFIG.endTitle;
+  $('endText').textContent = CONFIG.endText;
+  btn.textContent = CONFIG.endButton;
+  document.querySelector('.app').inert = true;
+  backdrop.hidden = false;
+  void backdrop.offsetWidth;
+  backdrop.classList.add('show');
+  btn.focus({ preventScroll: true });
+  LOG.t_end_dialog_shown = t();
+
   btn.addEventListener('click', () => {
     btn.disabled = true;
     LOG.t_continue_click = t();
+    LOG.continue_method = RETURN_URL ? 'return_url' : IN_FRAME ? 'parent' : 'close_window';
     save();
     post('chat_continue');
-  });
-  thread.appendChild(wrap);
-  fadeIn(wrap, 300);
-  scrollToEnd();
+    if (RETURN_URL) {
+      try { window.top.location.href = RETURN_URL; } catch (e) { location.href = RETURN_URL; }
+    } else if (!IN_FRAME) {
+      window.close();
+      setTimeout(() => {
+        LOG.window_closed = window.closed;
+        save();
+        if (window.closed) return;
+        note.textContent = CONFIG.endCloseFailed;
+        note.hidden = false;
+      }, 300);
+    }
+  }, { once: true });
 }
 
 /* ================= Ablauf ================= */
@@ -720,13 +899,16 @@ async function run() {
       words += AD_READ_WORDS;
     }
     scrollToEnd();
-    LOG[`read${n}_ms`] = Math.round(readMs(words));
+    // Vor der nächsten Nutzernachricht kürzer warten, nach der letzten Antwort (mit Anzeige) die volle Lesezeit.
+    const pause = last ? readMs(words)
+      : Math.max(CONFIG.minReplyReadMs, readMs(words) * CONFIG.replyReadFactor);
+    LOG[`read${n}_ms`] = Math.round(pause);
     save();
-    await wait(readMs(words) / SPEED);
+    await wait(pause / SPEED);
   }
 
   LOG.t_done = t();
-  if (CONFIG.showContinueButton) showContinue();
+  if (CONFIG.endDialog) showEndDialog();
   save();
   post('chat_done');
 }
