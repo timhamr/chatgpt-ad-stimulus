@@ -133,15 +133,14 @@
   .end-backdrop.show { opacity: 1; }
   .end-backdrop.show .end-dialog { transform: none; }
   .end-dialog h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; line-height: 26px; }
-  .end-dialog p { margin: 0 0 20px; font-size: 15px; line-height: 22px; color: #5d5d5d; }
+  .end-dialog p { margin: 0; font-size: 15px; line-height: 22px; color: #5d5d5d; }
   .end-btn {
-    width: 100%; min-height: 44px; padding: 12px 24px; border: 0; border-radius: 999px;
+    margin-top: 20px; width: 100%; min-height: 44px; padding: 12px 24px; border: 0; border-radius: 999px;
     font: inherit; font-size: 15px; font-weight: 500; line-height: 20px; color: #fff; background: #0d0d0d;
     cursor: pointer; touch-action: manipulation; transition: background-color 150ms ease;
   }
   .end-btn:active { background: #3a3a3a; }
   .end-btn:disabled { background: #8f8f8f; cursor: default; }
-  .end-dialog .end-note { margin: 12px 0 0; font-size: 13px; line-height: 18px; color: #8f8f8f; text-align: center; }
 
   /* Eingabefeld */
   .dock { flex: none; padding: 0 24px; padding-bottom: env(safe-area-inset-bottom); background: #fff; }
@@ -265,9 +264,8 @@
 <div class="end-backdrop" id="endDialog" hidden>
   <div class="end-dialog" role="dialog" aria-modal="true" aria-labelledby="endTitle" aria-describedby="endText">
     <h2 id="endTitle"></h2>
-    <p id="endText"></p>
+    <p id="endText" aria-live="polite"></p>
     <button class="end-btn" id="endBtn" type="button"></button>
-    <p class="end-note" id="endNote" hidden></p>
   </div>
 </div>
 
@@ -298,7 +296,7 @@ const CONFIG = {
   endTitle: 'The conversation is complete',
   endText: 'You can close the window and return to the survey.',
   endButton: 'Close window',
-  endCloseFailed: 'This window could not be closed automatically. Please close it yourself.',
+  endCloseFailed: 'Please close this tab yourself and return to the survey.', // falls der Browser das Schließen blockiert
   sendTooltip: 'Click to send',
   defaultCond: 1,           // bei fehlendem oder ungültigem ?cond=
   outputFieldId: 'IV01_01', // verstecktes Feld für JSON.stringify(LOG), z. B. interne Variable in SoSci
@@ -835,7 +833,7 @@ function showAd(turn) {
 // öffnet ?return=… oder meldet im iframe 'chat_continue' an die Umfrage.
 // Lässt der Browser das Schließen nicht zu, erscheint ein Hinweis, das Fenster selbst zu schließen.
 function showEndDialog() {
-  const backdrop = $('endDialog'), btn = $('endBtn'), note = $('endNote');
+  const backdrop = $('endDialog'), btn = $('endBtn');
   $('endTitle').textContent = CONFIG.endTitle;
   $('endText').textContent = CONFIG.endText;
   btn.textContent = CONFIG.endButton;
@@ -860,8 +858,9 @@ function showEndDialog() {
         LOG.window_closed = window.closed;
         save();
         if (window.closed) return;
-        note.textContent = CONFIG.endCloseFailed;
-        note.hidden = false;
+        // Browser erlaubt das Schließen nicht (Link nicht aus der Umfrage geöffnet): Button weg, klare Anweisung.
+        $('endText').textContent = CONFIG.endCloseFailed;
+        btn.hidden = true;
       }, 300);
     }
   }, { once: true });
