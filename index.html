@@ -286,8 +286,9 @@ const CONFIG = {
   readingWpm: 238,          // Lesezeit nach jeder Antwort
   minReadMs: 2500,          // Mindest-Lesezeit
   replyReadFactor: 0.5,     // Nutzer antwortet schneller: Pause vor der nächsten Nutzernachricht
-                            // = 50 % der Lesezeit (gilt nicht für die letzte Antwort mit Anzeige)
+                            // = 50 % der Lesezeit
   minReplyReadMs: 1500,     // Mindestpause vor der nächsten Nutzernachricht
+  endReadFactor: 0.5,       // Pause nach der Anzeige bis zum Pop-up = 50 % der Lesezeit (letzte Antwort + Anzeige)
   adFadeMs: 600,            // Einblenden der Anzeige
   adReadWords: 'max',       // Anzeigentext in der Lesezeit: 'max' = längste Anzeige aller Bedingungen
                             // des Falls (Ende für alle Bedingungen gleich), 'own' = Wörter der gezeigten Anzeige
@@ -898,8 +899,8 @@ async function run() {
       words += AD_READ_WORDS;
     }
     scrollToEnd();
-    // Vor der nächsten Nutzernachricht kürzer warten, nach der letzten Antwort (mit Anzeige) die volle Lesezeit.
-    const pause = last ? readMs(words)
+    // Lesezeit verkürzt: vor der nächsten Nutzernachricht bzw. nach der Anzeige bis zum Pop-up.
+    const pause = last ? Math.max(CONFIG.minReadMs, readMs(words) * CONFIG.endReadFactor)
       : Math.max(CONFIG.minReplyReadMs, readMs(words) * CONFIG.replyReadFactor);
     LOG[`read${n}_ms`] = Math.round(pause);
     save();
