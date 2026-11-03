@@ -430,12 +430,12 @@ If you mostly work at a desk, prioritize comfort and noise-cancelling strength o
 const COND_LABELS = { 1: 'full_match', 2: 'feature_mismatch', 3: 'category_mismatch', 4: 'goal_mismatch' };
 
 /* ================= Links: ?cond=1 bis 16, je vier pro Use Case =================
-   1–4   bottle      (Trinkflasche, wie bisher)
-   5–8   headphones  (Kopfhörer schwarz)
+   1–4   headphones  (Kopfhörer schwarz)
+   5–8   bottle      (Trinkflasche)
    9–12  restaurant  (Thai/Vietnamesisch)
    13–16 budget      (alter Stimulus, Kopfhörer unter $100)
    Innerhalb jedes Blocks: 1. full_match, 2. feature_mismatch, 3. category_mismatch, 4. goal_mismatch. */
-const LINKS = ['bottle', 'headphones', 'restaurant', 'budget'];
+const LINKS = ['headphones', 'bottle', 'restaurant', 'budget'];
 
 /* ================= Setup ================= */
 const params = new URLSearchParams(location.search);
