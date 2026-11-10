@@ -304,7 +304,7 @@ const CONFIG = {
 };
 
 /* ================= Use Cases mit Konversation (wörtlich) und Anzeigen (je 4 Bedingungen) =================
-   Quelle: „NIM Projekt: Sponsored Ads, Studie 2.5“. Anzeigen: 1 full_match, 2 feature_mismatch,
+   Quelle: „NIM Projekt: Sponsored Ads, Studie 2.5“ (Studie 3 steht weiter unten). Anzeigen: 1 full_match, 2 feature_mismatch,
    3 category_mismatch, 4 goal_mismatch. meta = Zeile links neben dem Button (Icon + Text oder Preis).
    Welche ?cond= zu welchem Use Case gehört, steht in LINKS darunter. */
 const AD_BRAND = 'Novaro';
@@ -426,22 +426,71 @@ If you mostly work at a desk, prioritize comfort and noise-cancelling strength o
     },
   },
 };
+
+/* ================= Studie 3: Gesprächsrunden (1 vs. 3) × Anzeige (full_match vs. goal_mismatch) =================
+   Quelle: „NIM Projekt: Sponsored Ads, Studie 3“. Kopfhörer, Anforderungen over-ear und schwarz.
+   Eine Runde: alle Anforderungen stehen in der ersten Nachricht. Drei Runden: der Chatbot fragt nach
+   Bauform und Farbe. Die letzte Antwort (Aufzählung) und beide Anzeigen sind in beiden Fällen gleich. */
+const STUDY3_LIST = `- **Effective ANC:** reduces constant sounds like traffic, voices or household noise.
+- **Comfortable fit:** soft ear cushions and a padded headband so you can wear them for hours.
+- **Battery life:** at least 20–30 hours per charge so you don't have to recharge every day.
+- **Transparency mode:** lets you hear what's going on around you without taking the headphones off.
+
+If you mostly work at your desk, I would recommend prioritizing comfort and noise-cancelling strength.`;
+const STUDY3_ADS = {
+  1: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/headphones_black.jpg',
+       text: 'Wireless over-ear headphones in matte black with active noise cancellation for distraction-free work.' },
+  4: { title: 'Novaro SoundBox Mini Bluetooth Speaker', img: 'img/speaker_black.jpg',
+       text: 'Portable Bluetooth speaker with powerful, room-filling sound – perfect for parties, barbecues and music on the go.' },
+};
+CASES.one_turn = {
+  ads: STUDY3_ADS,
+  chat: [
+    {
+      user: "I work from home, and it's often really noisy – traffic, neighbors, household noise. I'm looking for noise-cancelling headphones so I can focus on my work. I'd like over-ear headphones, since I wear them for several hours a day and in-ear ones usually start to hurt after a while. And I'd like them in black, as that fits my home office – I've carefully furnished it in black. Do you have any recommendations?",
+      bot: "Happy to help! There are plenty of black over-ear headphones with **active noise cancellation (ANC)** – a great choice for focused work at home. Here's what to look for:\n" + STUDY3_LIST,
+    },
+  ],
+};
+CASES.three_turns = {
+  ads: STUDY3_ADS,
+  chat: [
+    {
+      user: "I work from home, and it's often really noisy – traffic, neighbors, household noise. I'm looking for noise-cancelling headphones so I can focus on my work. Do you have any recommendations?",
+      bot: "Happy to help! Headphones with **active noise cancellation (ANC)** are a great choice for focused work at home. To narrow it down: do you prefer **over-ear** or **in-ear** headphones? Over-ear models usually block more noise and are more comfortable for long sessions, while in-ear models are smaller and easier to carry.",
+    },
+    {
+      user: "Over-ear, please, since I wear them for several hours a day and in-ear ones usually start to hurt after a while.",
+      bot: "That makes sense – over-ear headphones are the better choice for long working sessions. One more question: do you have a preference regarding **color** or design? Many models come in several colors.",
+    },
+    {
+      user: "I'd like them in black, as that fits my home office – I've carefully furnished it in black.",
+      bot: "Good choice! There are plenty of black over-ear headphones with ANC. Here's what to look for:\n" + STUDY3_LIST,
+    },
+  ],
+};
 const COND_LABELS = { 1: 'full_match', 2: 'feature_mismatch', 3: 'category_mismatch', 4: 'goal_mismatch' };
 
-/* ================= Links: ?cond=1 bis 16, je vier pro Use Case =================
+/* ================= Links: ?cond=1 bis 20 =================
+   Studie 2.5, je vier pro Use Case (1. full_match, 2. feature_mismatch, 3. category_mismatch, 4. goal_mismatch):
    1–4   headphones  (Kopfhörer schwarz)
    5–8   bottle      (Trinkflasche)
    9–12  restaurant  (Thai/Vietnamesisch)
    13–16 budget      (alter Stimulus, Kopfhörer unter $100)
-   Innerhalb jedes Blocks: 1. full_match, 2. feature_mismatch, 3. category_mismatch, 4. goal_mismatch. */
+   Studie 3 (Condition 1 bis 4 der Folien):
+   17 one_turn, full_match       18 one_turn, goal_mismatch
+   19 three_turns, full_match    20 three_turns, goal_mismatch */
 const LINKS = ['headphones', 'bottle', 'restaurant', 'budget'];
+const CONDS = [
+  ...LINKS.flatMap(c => [1, 2, 3, 4].map(ad => ({ study: '2.5', case: c, ad }))),
+  ...['one_turn', 'three_turns'].flatMap(c => [1, 4].map(ad => ({ study: '3', case: c, ad }))),
+];
 
 /* ================= Setup ================= */
 const params = new URLSearchParams(location.search);
 const condParam = params.get('cond');
-const COND = (n => (Number.isInteger(n) && n >= 1 && n <= LINKS.length * 4 ? n : CONFIG.defaultCond))(Number(condParam));
-const CASE = LINKS[Math.floor((COND - 1) / 4)];
-const AD_COND = (COND - 1) % 4 + 1;  // Anzeige 1 bis 4 innerhalb des Use Cases
+const COND = (n => (Number.isInteger(n) && n >= 1 && n <= CONDS.length ? n : CONFIG.defaultCond))(Number(condParam));
+const { study: STUDY, case: CASE, ad: AD_COND } = CONDS[COND - 1];  // AD_COND: Schlüssel der Anzeige (siehe COND_LABELS)
 const { chat: CHAT, ads: ADS, cta: CTA_LABEL = 'Shop Now' } = CASES[CASE];
 // Nur zum Testen: ?speed=10 spielt alles zehnmal so schnell ab (wird im LOG vermerkt).
 const SPEED = Math.min(50, Math.max(0.1, parseFloat(params.get('speed')) || 1));
@@ -490,10 +539,12 @@ adImg.src = ADS[AD_COND].img;
 /* ================= LOG ================= */
 const t = () => Math.round(performance.now()); // ms seit Seitenstart
 const LOG = {
-  version: '1.1',
-  cond: COND,               // 1 bis 16, wie im Link
+  version: '1.2',
+  cond: COND,               // 1 bis 20, wie im Link
+  study: STUDY,             // '2.5' oder '3'
   case: CASE,
-  ad_cond: AD_COND,         // 1 bis 4 innerhalb des Use Cases
+  turns: CHAT.length,       // Anzahl der Gesprächsrunden (Studie 3: 1 oder 3)
+  ad_cond: AD_COND,         // Anzeige: 1 full_match … 4 goal_mismatch
   cond_label: COND_LABELS[AD_COND],
   cond_param: condParam,
   speed: SPEED,
@@ -504,6 +555,8 @@ const LOG = {
   t_answer1_start: null, t_answer1_end: null, read1_ms: null,
   t_typing2_end: null, t_send2_enabled: null, t_send2_click: null, send2_wait_ms: null, send2_method: null,
   t_answer2_start: null, t_answer2_end: null, read2_ms: null,
+  t_typing3_end: null, t_send3_enabled: null, t_send3_click: null, send3_wait_ms: null, send3_method: null,
+  t_answer3_start: null, t_answer3_end: null, read3_ms: null,   // Runden, die es im Fall nicht gibt, bleiben null
   t_ad_shown: null,
   t_done: null,
   t_end_dialog_shown: null,
