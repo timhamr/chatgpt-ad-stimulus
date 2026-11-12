@@ -428,9 +428,10 @@ If you mostly work at a desk, prioritize comfort and noise-cancelling strength o
 };
 
 /* ================= Studie 3: Gesprächsrunden (1 vs. 3) × Anzeige (full_match vs. goal_mismatch) =================
-   Quelle: „NIM Projekt: Sponsored Ads, Studie 3“. Kopfhörer, Anforderungen over-ear und schwarz.
-   Eine Runde: alle Anforderungen stehen in der ersten Nachricht. Drei Runden: der Chatbot fragt nach
-   Bauform und Farbe. Die letzte Antwort (Aufzählung) und beide Anzeigen sind in beiden Fällen gleich. */
+   Quelle: „NIM Projekt: Sponsored Ads, Studie 3“ (Stand 12.11.2026). Over-ear-Kopfhörer, Feature = Budget max. $100.
+   Eine Runde: Art des Lärms und Budget stehen in der ersten Nachricht. Drei Runden: der Chatbot fragt nach
+   der Art des Lärms und dem Budget. Die Aufzählung in der letzten Antwort und beide Anzeigen sind in beiden
+   Fällen gleich. Der Lautsprecher (goal_mismatch) liegt mit $119 zusätzlich über dem Budget. */
 const STUDY3_LIST = `- **Effective ANC:** reduces constant sounds like traffic, voices or household noise.
 - **Comfortable fit:** soft ear cushions and a padded headband so you can wear them for hours.
 - **Battery life:** at least 20–30 hours per charge so you don't have to recharge every day.
@@ -438,17 +439,17 @@ const STUDY3_LIST = `- **Effective ANC:** reduces constant sounds like traffic, 
 
 If you mostly work at your desk, I would recommend prioritizing comfort and noise-cancelling strength.`;
 const STUDY3_ADS = {
-  1: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/headphones_black.jpg',
-       text: 'Wireless over-ear headphones in matte black with active noise cancellation for distraction-free work.' },
-  4: { title: 'Novaro SoundBox Mini Bluetooth Speaker', img: 'img/speaker_black.jpg',
+  1: { title: 'Novaro Focus Noise-Cancelling Headphones', img: 'img/headphones_black.jpg', meta: { price: '$89' },
+       text: 'Wireless over-ear headphones with powerful active noise cancellation for distraction-free work.' },
+  4: { title: 'Novaro SoundBox Bluetooth Speaker', img: 'img/speaker_black.jpg', meta: { price: '$119' },
        text: 'Portable Bluetooth speaker with powerful, room-filling sound – perfect for parties, barbecues and music on the go.' },
 };
 CASES.one_turn = {
   ads: STUDY3_ADS,
   chat: [
     {
-      user: "I work from home, and it's often really noisy – traffic, neighbors, household noise. I'm looking for noise-cancelling headphones so I can focus on my work. I'd like over-ear headphones, since I wear them for several hours a day and in-ear ones usually start to hurt after a while. And I'd like them in black, as that fits my home office – I've carefully furnished it in black. Do you have any recommendations?",
-      bot: "Happy to help! There are plenty of black over-ear headphones with **active noise cancellation (ANC)** – a great choice for focused work at home. Here's what to look for:\n" + STUDY3_LIST,
+      user: "I work from home, and it's often really noisy – mostly traffic outside, my neighbors and household noise like the washing machine. I'm looking for over-ear noise-cancelling headphones to block out that noise so I can concentrate on my work. I don't want to spend more than $100, since I only need them for work and they don't have to be high-end. Do you have any recommendations?",
+      bot: "Happy to help! **Active noise cancellation (ANC)** works well for blocking out these kinds of noise – and with a budget of up to $100, you'll find solid options. Here's what to look for:\n" + STUDY3_LIST,
     },
   ],
 };
@@ -456,16 +457,16 @@ CASES.three_turns = {
   ads: STUDY3_ADS,
   chat: [
     {
-      user: "I work from home, and it's often really noisy – traffic, neighbors, household noise. I'm looking for noise-cancelling headphones so I can focus on my work. Do you have any recommendations?",
-      bot: "Happy to help! Headphones with **active noise cancellation (ANC)** are a great choice for focused work at home. To narrow it down: do you prefer **over-ear** or **in-ear** headphones? Over-ear models usually block more noise and are more comfortable for long sessions, while in-ear models are smaller and easier to carry.",
+      user: "I work from home, and it's often really noisy. I'm looking for over-ear noise-cancelling headphones to block out that noise so I can concentrate on my work. Do you have any recommendations?",
+      bot: "Happy to help! To find the right level of noise cancellation: what kind of noise do you mainly want to block out?",
     },
     {
-      user: "Over-ear, please, since I wear them for several hours a day and in-ear ones usually start to hurt after a while.",
-      bot: "That makes sense – over-ear headphones are the better choice for long working sessions. One more question: do you have a preference regarding **color** or design? Many models come in several colors.",
+      user: "Mostly traffic outside, my neighbors and household noise like the washing machine.",
+      bot: "That makes sense – **active noise cancellation (ANC)** works well for blocking out these kinds of noise. To narrow down the options a bit further: what's your budget? Good noise-cancelling headphones range from about $50 to over $400.",
     },
     {
-      user: "I'd like them in black, as that fits my home office – I've carefully furnished it in black.",
-      bot: "Good choice! There are plenty of black over-ear headphones with ANC. Here's what to look for:\n" + STUDY3_LIST,
+      user: "I don't want to spend more than $100, since I only need them for work and they don't have to be high-end.",
+      bot: "Good choice! With a budget of up to $100, you'll find solid headphones with ANC. Here's what to look for:\n" + STUDY3_LIST,
     },
   ],
 };
@@ -539,7 +540,7 @@ adImg.src = ADS[AD_COND].img;
 /* ================= LOG ================= */
 const t = () => Math.round(performance.now()); // ms seit Seitenstart
 const LOG = {
-  version: '1.2',
+  version: '1.3',
   cond: COND,               // 1 bis 20, wie im Link
   study: STUDY,             // '2.5' oder '3'
   case: CASE,
