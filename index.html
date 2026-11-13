@@ -122,7 +122,7 @@
   /* Abschluss-Pop-up */
   .end-backdrop {
     position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-    padding: 16px; background: rgba(0, 0, 0, 0.45);
+    padding: 16px; background: #8c8c8c; /* blickdicht: der Chat ist hinter dem Pop-up nicht mehr zu sehen */
     opacity: 0; transition: opacity 220ms ease;
   }
   .end-dialog {
@@ -289,7 +289,8 @@ const CONFIG = {
                             // = 50 % der Lesezeit
   minReplyReadMs: 1500,     // Mindestpause vor der nächsten Nutzernachricht
   endReadFactor: 0.5,       // Pause nach der Anzeige bis zum Pop-up = 50 % der Lesezeit (letzte Antwort + Anzeige)
-  adFadeMs: 600,            // Einblenden der Anzeige
+  endExtraMs: 5000,         // zusätzliche Zeit nach der Anzeige, bevor das Pop-up den Chat verdeckt
+  adFadeMs: 600,           // Einblenden der Anzeige
   adReadWords: 'max',       // Anzeigentext in der Lesezeit: 'max' = längste Anzeige aller Bedingungen
                             // des Falls (Ende für alle Bedingungen gleich), 'own' = Wörter der gezeigten Anzeige
   pauseWhenHidden: true,    // Ablauf pausiert, solange der Tab verborgen ist
@@ -540,7 +541,7 @@ adImg.src = ADS[AD_COND].img;
 /* ================= LOG ================= */
 const t = () => Math.round(performance.now()); // ms seit Seitenstart
 const LOG = {
-  version: '1.3',
+  version: '1.4',
   cond: COND,               // 1 bis 20, wie im Link
   study: STUDY,             // '2.5' oder '3'
   case: CASE,
@@ -954,7 +955,7 @@ async function run() {
     }
     scrollToEnd();
     // Lesezeit verkürzt: vor der nächsten Nutzernachricht bzw. nach der Anzeige bis zum Pop-up.
-    const pause = last ? Math.max(CONFIG.minReadMs, readMs(words) * CONFIG.endReadFactor)
+    const pause = last ? Math.max(CONFIG.minReadMs, readMs(words) * CONFIG.endReadFactor) + CONFIG.endExtraMs
       : Math.max(CONFIG.minReplyReadMs, readMs(words) * CONFIG.replyReadFactor);
     LOG[`read${n}_ms`] = Math.round(pause);
     save();
